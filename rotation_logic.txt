@@ -1,0 +1,67 @@
+ACO => 2 months and move back
+PRO => 3 months and move back => no other roles => check 1 year
+ACS =>2 months forward
+BS => max 1 year, move forward every month
+AC/DC => 3 months then, forward
+DO => continuous 3 months
+SDO max 1 month
+Departure => 1 month
+
+
+
+have the current batch of all these people, based on the above rules now generate the current month roster on button click
+
+
+
+const officerLogic = {
+   "ACO":{
+      "movement":"backward",
+      "roles":{
+        "PRO":{
+            "duration":"3"
+         }
+      }
+   }
+
+
+
+}
+
+{
+        Name: 'Ganesh',
+        GovMail: 'ganesh@gov.in',
+        DOB: '1977-09-25',
+        DOJ: '2015-07-06',
+        Cadre: 'AC/DC',
+        Batch: 'Batch 4',
+        id: '120',
+        Roles: {
+            September: 'SUPERVISION',
+            August: 'SUPERVISION',
+            July: 'SUPERVISION'
+        }
+    }
+
+
+
+
+
+
+ill create a new object which has officer name, cadre and a roles object which will have generatedRole and eligible roles
+
+ill check in the map if the officer is ACO, if he is ill checkif he is PRO and if he is PRO(ill add a helper to check if his PRO tenure is done) and his PRO tenure is not done ill assign the role as PRO, else I will assign a dummy variable for now in role as generatedRole. next in else if ill check if the officer is DO and check if his quota has completed if yes ill again place a dummy variable. if no ill assign as DO again. while iterating for each officer while creating a dummy object ill check his past roles (again, in the same place where we are placing a dummy variable, here ill call a helper to  only show his eligible roles in the roles dropdown). ALl this while while checking for the roles ill also have a assignBatch helper which will take in last 3 months batches and assign the batch variable.
+
+now second map to assign all the officers roles. here to assign the dummy role variable from the eligible roles ill check in the helper class how many roles left put. now after selecting one officer for that role based on random function ill remove that from this object. 
+
+
+
+start of with the helper functions in js
+
+assignBatch()
+getMandatoryRole()
+getEligibleRoles()
+assignRandomRole()
+isProTenureCompleted(officer)
+isDoQuotaCompleted(officer)
+
+
