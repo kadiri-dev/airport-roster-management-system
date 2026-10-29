@@ -13,9 +13,7 @@ export default function Officers() {
       <Typography mt={2}>
         Manage officers and view their roster history.
       </Typography>
-      <Typography>
-          <OfficerHistory/>
-      </Typography>
+      <OfficerHistory />
     </Box>
   );
 }

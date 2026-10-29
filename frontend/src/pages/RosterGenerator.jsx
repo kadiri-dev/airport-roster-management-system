@@ -38,14 +38,29 @@ import {
   currentMonth,
 } from "../Data";
 import { rosterHistoryContext } from "../context/RosterHistoryContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function RosterGenerator() {
   const [rosterArr, setRosterArr] = useContext(rosterContext);
   const [officers] = useContext(officerContext);
-  const [showRoster, setShowRoster] = useState(false);
-  const [, setSavedRosters] = useContext(rosterHistoryContext);
+  const [savedRosters, setSavedRosters] = useContext(rosterHistoryContext);
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const latestSavedRoster = savedRosters[0] ?? null;
+  const hasDraft = rosterArr.length > 0;
+  const rosterToDisplay =
+    isAdmin && hasDraft ? rosterArr : latestSavedRoster?.officers ?? [];
+  const displayedMonth =
+    isAdmin && hasDraft
+      ? getCurrentMonth()
+      : latestSavedRoster?.month ?? getCurrentMonth();
+  const displayedYear =
+    isAdmin && hasDraft
+      ? getCurrentYear()
+      : latestSavedRoster?.year ?? getCurrentYear();
   
   const submitRoster = () => {
+  if (!isAdmin) return;
   if (!rosterArr.length) {
     alert("Please generate a roster before submitting.");
     return;
@@ -82,6 +97,7 @@ export default function RosterGenerator() {
 };
 
   const createRoster = () => {
+    if (!isAdmin) return;
     // First determine each officer's proposed batch and mandatory role.
     const preparedOfficers = officers.map((officer) => {
       const nextBatch = assignBatch(officer);
@@ -148,12 +164,11 @@ export default function RosterGenerator() {
     }));
 
     setRosterArr(finalRoster);
-    setShowRoster(true);
   };
 
   const discardRoster = () => {
+    if (!isAdmin) return;
     setRosterArr([]);
-    setShowRoster(false);
   };
 
   return (
@@ -163,17 +178,19 @@ export default function RosterGenerator() {
       </Typography>
 
       <Box display="flex" gap={2} mb={2}>
-        <Button variant="contained" onClick={createRoster}>
-          Generate Roster
-        </Button>
+        {isAdmin && (
+          <Button variant="contained" onClick={createRoster}>
+            Generate Roster
+          </Button>
+        )}
 
-        {showRoster && (
+        {isAdmin && hasDraft && (
           <Button variant="outlined" onClick={discardRoster}>
             Discard Generated Roster
           </Button>
         )}
 
-        {showRoster && (
+        {isAdmin && hasDraft && (
           <Button
             variant="contained"
             color="success"
@@ -185,10 +202,30 @@ export default function RosterGenerator() {
       </Box>
 
       <Typography variant="h5" fontWeight="bold" mb={3} sx={{ ml: 1, mt: 1 }}>
-        Roster Month: {month[currentMonth]}
+        Roster Month: {displayedMonth} {displayedYear}
       </Typography>
 
-      {showRoster && <CreateTabs rosterArr={rosterArr} />}
+      {rosterToDisplay.length > 0 ? (
+        <>
+          {!isAdmin && (
+            <Typography color="text.secondary" mb={2}>
+              Viewer mode — this roster is read-only.
+            </Typography>
+          )}
+          {isAdmin && !hasDraft && latestSavedRoster && (
+            <Typography color="text.secondary" mb={2}>
+              Showing the latest submitted roster. Generate a new roster to create a draft.
+            </Typography>
+          )}
+          <CreateTabs rosterArr={rosterToDisplay} readOnly={!isAdmin || !hasDraft} />
+        </>
+      ) : (
+        <Typography color="text.secondary">
+          {isAdmin
+            ? "No roster is available yet. Generate a roster and submit it to make it available in Roster History."
+            : "No submitted roster is available to view yet."}
+        </Typography>
+      )}
     </Box>
   );
 }
@@ -228,7 +265,7 @@ function a11yProps(index) {
   };
 }
 
-function CreateTabs({ rosterArr }) {
+function CreateTabs({ rosterArr, readOnly }) {
   const [value, setValue] = useState(0);
 
   const handleChange = (event, newValue) => {
@@ -266,7 +303,7 @@ function CreateTabs({ rosterArr }) {
           value={value}
           index={index}
         >
-          <BuildTable rosterArr={splitBatches(rosterArr, batch)} />
+          <BuildTable rosterArr={splitBatches(rosterArr, batch)} readOnly={readOnly} />
         </CustomTabPanel>
       ))}
     </Box>
@@ -275,9 +312,10 @@ function CreateTabs({ rosterArr }) {
 
 CreateTabs.propTypes = {
   rosterArr: PropTypes.array.isRequired,
+  readOnly: PropTypes.bool,
 };
 
-function BuildTable({ rosterArr }) {
+function BuildTable({ rosterArr, readOnly }) {
   const [, setRosterArr] = useContext(rosterContext);
 
   const updateOfficerBatch = (id, newBatch) => {
@@ -330,6 +368,7 @@ function BuildTable({ rosterArr }) {
               <TableCell>
                 <CreateBatchOptions
                   NextBatch={officer.NextBatch}
+                  disabled={readOnly}
                   onBatchChange={(newBatch) =>
                     updateOfficerBatch(officer.id, newBatch)
                   }
@@ -346,6 +385,7 @@ function BuildTable({ rosterArr }) {
                 <CreateRoleOptions
                   roles={officer.eligibleRoles ?? []}
                   selectedRole={officer.NextRole ?? ""}
+                  disabled={readOnly}
                   onRoleChange={(newRole) =>
                     updateOfficerRole(officer.id, newRole)
                   }
@@ -369,14 +409,16 @@ function BuildTable({ rosterArr }) {
 
 BuildTable.propTypes = {
   rosterArr: PropTypes.array.isRequired,
+  readOnly: PropTypes.bool,
 };
 
-function CreateRoleOptions({ roles, selectedRole, onRoleChange }) {
+function CreateRoleOptions({ roles, selectedRole, onRoleChange, disabled = false }) {
   return (
     <FormControl fullWidth size="small">
       <InputLabel id="role-select-label">Select Role</InputLabel>
 
       <Select
+        disabled={disabled}
         labelId="role-select-label"
         value={selectedRole}
         label="Select Role"
@@ -413,14 +455,16 @@ CreateRoleOptions.propTypes = {
   roles: PropTypes.array.isRequired,
   selectedRole: PropTypes.string,
   onRoleChange: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
 };
 
-function CreateBatchOptions({ NextBatch, onBatchChange }) {
+function CreateBatchOptions({ NextBatch, onBatchChange, disabled = false }) {
   const batches = ["A", "B", "C", "D"];
 
   return (
     <FormControl fullWidth size="small">
       <Select
+        disabled={disabled}
         value={NextBatch ?? ""}
         onChange={(event) => onBatchChange(event.target.value)}
         inputProps={{ "aria-label": "Next batch" }}
@@ -438,4 +482,5 @@ function CreateBatchOptions({ NextBatch, onBatchChange }) {
 CreateBatchOptions.propTypes = {
   NextBatch: PropTypes.string,
   onBatchChange: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
 };
